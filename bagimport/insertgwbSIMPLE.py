@@ -3,6 +3,8 @@ import shapefile
 import shapely
 from shapely.geometry import Point
 
+# REDO: GEEN WATER MEENEMEN
+
 try:
     conn = psycopg2.connect("dbname='dbbuurt' user='buurtuser' host='localhost' password='123456'")
     print("Database connection established")
