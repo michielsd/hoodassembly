@@ -21,6 +21,18 @@ wijkbuurtpull = """SELECT codering_3, urlname, urlwk, urlgm, wijkenenbuurten FRO
 cur.execute(wijkbuurtpull)
 wijkbuurt = cur.fetchall()
 
+wijkbuurt2 = []
+for buurt in wijkbuurt:
+    altline = []
+    for cell in buurt:
+        if cell and cell.startswith("Wijk"):
+            altline.append(cell[8:])
+        else:
+            altline.append(cell)
+    wijkbuurt2.append(altline)
+
+print(wijkbuurt2[:5])
+
 #pull woonplaats en straat data
 woonplaatspull = """SELECT DISTINCT(woonplaats) FROM bagadres"""
 cur.execute(woonplaatspull)
@@ -40,32 +52,39 @@ for wijk in wijkbuurt:
     names = wijk[1:]
     urldict[codering] = names
 
+print("Prep complete")
+
 #pull bagdata per batch
 # no in bagadres: 9090846
-insertbag = """UPDATE bagadres SET zoekadres = %s, gmurl = %s, wkurl = %s, buurl = %s WHERE id = %s"""
-insertstreet = """UPDATE bagadres SET zoekadres = %s, gmurl = %s, wkurl = %s, buurl = %s WHERE woonplaats = %s AND openbareruimte = %s"""
+insertbag = """INSERT INTO searchbase (searchindex, gmurl, wkurl, buurl, woonplaats) VALUES (%s, %s, %s, %s, %s)"""
 
-bagpull = """SELECT id, openbareruimte, huisnummer, huisletter, huisnummertoevoeging, woonplaats, gem_code, wk_code, bu_code FROM bagadres WHERE gmurl IS NULL and woonplaats = %(dwp)s AND openbareruimte = %(dor)s"""
+bagpull = """SELECT id, openbareruimte, huisnummer, huisletter, huisnummertoevoeging, woonplaats, gem_code, wk_code, bu_code FROM bagadres WHERE woonplaats = %(dwp)s"""
+searchbasepull = """SELECT searchindex FROM searchbase WHERE woonplaats = %s"""
 
 streetpull = """SELECT DISTINCT(openbareruimte) FROM bagadres WHERE woonplaats = %s"""
 
-for woonplaats in woonplaatsen[1:]:
-    print("woonplaats: %d" % woonplaatsen.index(woonplaats))
+
+#CHECK woonplaats 2008
+for woonplaats in woonplaatsen:
+    print("woonplaats: %d / %d" % (woonplaatsen.index(woonplaats), len(woonplaatsen)))
+    woonplaatslist = []
     cur.execute(streetpull, (woonplaats,))
     straten = cur.fetchall()
 
+    bagdf = pd.read_sql_query(bagpull, engine, params={"dwp": woonplaats,})
+
     for straat in straten:
-        bagdf = pd.read_sql_query(bagpull, engine, params={"dwp": woonplaats, "dor": straat[0]})
         
-        codes_q = len(set(bagdf.loc[:, 'bu_code'].values))
-        
+        selectdf = bagdf.loc[bagdf['openbareruimte'] == straat[0]]
+        codes_q = len(set(selectdf.loc[:, 'bu_code'].values))
+
         if codes_q == 1:
             
-            gmcode = bagdf.loc[:, 'gem_code'].values[0]
-            wkcode = bagdf.loc[:, 'wk_code'].values[0]
-            bucode = bagdf.loc[:, 'bu_code'].values[0]
-            
-            zoekadres = "%s, %s" % (straat[0], woonplaats)
+            gmcode = selectdf.loc[:, 'gem_code'].values[0]
+            wkcode = selectdf.loc[:, 'wk_code'].values[0]
+            bucode = selectdf.loc[:, 'bu_code'].values[0]
+
+            searchindex = "%s, %s" % (straat[0], woonplaats)
             gmurl = urldict[gmcode][0]
             if wkcode in urldict:
                 wkurl = urldict[wkcode][2] + "/" + urldict[wkcode][0]
@@ -74,12 +93,11 @@ for woonplaats in woonplaatsen[1:]:
                 wkurl = None
                 buurl = None
 
-            datainsert = (zoekadres, gmurl, wkurl, buurl, woonplaats, straat[0])
-            cur.execute(insertstreet, datainsert)
-            conn.commit()
+            datainsert = (searchindex, gmurl, wkurl, buurl, woonplaats)
+            woonplaatslist.append(datainsert)
             print(datainsert)
         else:
-            for index, row in bagdf.iterrows():
+            for index, row in selectdf.iterrows():
                 idnr = row['id']
                 if row['huisletter']:
                     fulladdress = row['openbareruimte'] + " " + row['huisnummer'] + "-" +  row['huisletter'] + ", " + row['woonplaats']
@@ -97,11 +115,27 @@ for woonplaats in woonplaatsen[1:]:
                     wijkurl = None
                     buurturl = None
                 
-                datainsert = (fulladdress, gemeenteurl, wijkurl, buurturl, idnr)
-                cur.execute(insertbag, datainsert)
-                conn.commit()
+                datainsert = (fulladdress, gemeenteurl, wijkurl, buurturl, woonplaats)
+                woonplaatslist.append(datainsert)
                 print(datainsert)
 
+    cur.execute(searchbasepull, (woonplaats,))
+    
+    try: 
+        woonplaatscheck = cur.fetchall()
+        checklist = [x[0] for x in woonplaatscheck]
+
+        for row in datainsert:
+            if row[0] in checklist:
+                datainsert.remove(row)
+    except:
+        pass
+
+    print("EXECUTING INTO DBASE FOR %s" % woonplaats)
+    cur.executemany(insertbag, woonplaatslist)
+    conn.commit()
+    print("INSERT SUCCESFUL")
+    
 
     
 

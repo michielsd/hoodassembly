@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import create_engine
 import pandas as pd
 import numpy as np
@@ -33,6 +35,8 @@ engine = create_engine('postgresql+psycopg2://buurtuser:123456@localhost/dbbuurt
 #read 2018 from csv
 df = pd.read_csv('buurtdata2018.csv', encoding='Windows-1252', index_col=0)
 
+print(df)
+
 #read 2017 from sql
 pull2017 = """SELECT codering_3, gemiddeldinkomenperinkomensontvanger_65, k_20huishoudensmethoogsteinkomen_71, huishoudensmeteenlaaginkomen_72, pctbijstand_203 FROM wijkbuurt2017"""
 df2017 = pd.read_sql_query(pull2017, engine)
@@ -52,7 +56,7 @@ df.columns = df.columns.str.strip()
 df['wijkenenbuurten'] = df['wijkenenbuurten'].str.strip()
 df['gemeentenaam_1'] = df['gemeentenaam_1'].str.strip()
 df['codering_3'] = df['codering_3'].str.strip()
-df['gemiddeldewoningwaarde_35'] = 1000* df['gemiddeldewoningwaarde_35']
+df['gemiddeldewoningwaarde_35'] = 1000*df['gemiddeldewoningwaarde_35']
 df['meestvoorkomendepostcode_103'] = df['meestvoorkomendepostcode_103'].str.strip()
 df['pctvrouwen_200'] = round(100*df['vrouwen_7'] / df['aantalinwoners_5'], 1)
 df['pctkinderen_201'] = round(100*df['k_0tot15jaar_8'] / df['aantalinwoners_5'], 1)
@@ -65,23 +69,51 @@ df['pctdiefstal_207'] = round(10000*df['totaaldiefstaluitwoningschuured_78'] / d
 df['pctvernieling_208'] = round(10000*df['vernielingmisdrijftegenopenbareorde_79'] / df['aantalinwoners_5'], 1)
 df['pctgeweld_209'] = round(10000*df['geweldsenseksuelemisdrijven_80'] / df['aantalinwoners_5'], 1)
 
-codedict = {}
+#make dict voor juist wijkenenbuurten
+predict = {}
 for index, row in df.iterrows():
     code = row['codering_3']
-    name = row['wijkenenbuurten'].replace('[^\w\s]','').replace(" ", "_")
-    codedict[code] = name
+    name = row['wijkenenbuurten']
+    predict[code] = name
     print(code, name)
 
-neighbourdict = {}
-neighbourdict['NL00'] = [None, None, None, None, None, None, None, None, None, None]
-for row in neightuple:
-    center = row[0]
-    neighbours = row[1:]
-    neighbours = [codedict[y] for y in neighbours if y]
-    addition = [None] * (10-len(neighbours))
-    neighbours = neighbours + addition
-    neighbourdict[center] = neighbours
-    print(neighbours)
+#remove wijk 00 etc.
+codedict = {}
+for key, value in predict.items():
+    valuelist = value.split(" ")
+    switchdummy = 0
+    if 'wijk' in valuelist:
+        for w in re.finditer('wijk', value):
+            sp = w.start()
+            substring = value[sp:(sp+7)]
+            if len(substring)>=7 and substring[6].isdigit():
+                replacement = value.replace(substring, "").strip()
+                switchdummy = 1
+                if not replacement:
+                    codedict[key] = value
+                elif replacement.startswith(":") or replacement.startswith("-"):
+                    codedict[key] = value[2:]
+                else:
+                    codedict[key] = replacement
+    if 'Wijk' in valuelist:
+        for w in re.finditer('Wijk', value):
+            sp = w.start()
+            substring = value[sp:(sp+7)]
+            if len(substring)>=7 and substring[5].isdigit():
+                replacement = value.replace(substring, "").strip()
+                switchdummy = 1
+                if not replacement:
+                    codedict[key] = value
+                elif replacement.startswith(":") or replacement.startswith("-"):
+                    codedict[key] = value[2:]
+                else:
+                    codedict[key] = replacement
+    if switchdummy == 0:
+        codedict[key] = value
+
+for key, value in codedict.items():
+    if 'Wijk' in value:
+        print(value)
 
 #namen wijken aanpassen voor URL: komma zonder spatie
 wrongcommas = df[
@@ -106,42 +138,31 @@ df1['plusniveau_301'] = np.nan
 df1['provincie_302'] = np.nan
 df1['wijknaam_303'] = np.nan
 
-df1['neighbour1'] = np.nan
-df1['neighbour2'] = np.nan
-df1['neighbour3'] = np.nan
-df1['neighbour4'] = np.nan
-df1['neighbour5'] = np.nan
-df1['neighbour6'] = np.nan
-df1['neighbour7'] = np.nan
-df1['neighbour8'] = np.nan
-df1['neighbour9'] = np.nan
-df1['neighbour10'] = np.nan
-
 df1 = df1.iloc[0:0]
+
+print("")
 
 mistakecounter = 0
 for index, row in df.iterrows():
-    df2017 = df2017.loc[df2017['codering_3'] == row['codering_3']]
-    df2017['gemiddeldinkomen_210'] = 100*df2017['gemiddeldinkomen_210']
-    values2017 = df2017.values.tolist()[0][1:]
-    neighbours = neighbourdict[row['codering_3']]
+    row2017 = df2017.loc[df2017['codering_3'] == row['codering_3']] 
+    values2017 = row2017.values.tolist()[0][1:]
 
+    wenb = codedict[row['codering_3']]
+
+    #combine into new table
     if row['codering_3'].startswith('NL'):
-        df1.loc[len(df1)] = row.values.tolist() + values2017 + [None] + [None] + [None] + [None] + neighbours
-        print("check")
+        df1.loc[len(df1)] = [wenb] + row.values.tolist()[1:] + values2017 + [None] + [None] + [None] + [None]
     elif row['codering_3'].startswith('BU'):
-        print(index / len(df))
         wijknummer = "WK" + row['codering_3'][2:8]
-        wijk = df.loc[
-            (df['codering_3'] == wijknummer)
-        ]['wijkenenbuurten'].item()
-        df1.loc[len(df1)] = row.values.tolist() + values2017 + ["buurt"] + ["wijk"] + [provdict[row['codering_3']]] + [wijk] + neighbours
+        wijk = codedict[wijknummer]
+                
+        df1.loc[len(df1)] = [wenb] + row.values.tolist()[1:] + values2017 + ["buurt"] + ["wijk"] + [provdict[row['codering_3']]] + [wijk]
     elif row['codering_3'].startswith('WK'):
-        print(index/len(df))
-        df1.loc[len(df1)] = row.values.tolist() + values2017 + ["wijk"] + ["gemeente"] + [provdict[row['codering_3']]] + [None] + neighbours
+        df1.loc[len(df1)] = [wenb] + row.values.tolist()[1:] + values2017 + ["wijk"] + ["gemeente"] + [provdict[row['codering_3']]] + [None]
     else:
-        df1.loc[len(df1)] = row.values.tolist() + values2017 + ["gemeente"] + [""] + [provdict[row['codering_3']]] + [None] + neighbours
-        print(index/len(df))
+        df1.loc[len(df1)] = [wenb] + row.values.tolist()[1:] + values2017 + ["gemeente"] + [""] + [provdict[row['codering_3']]] + [None]
+
+    print((index / len(df), wenb))
     
 df1['urlname'] = df1['wijkenenbuurten'].str.replace('[^\w\s]','').replace(" ", "_")
 df1['urlwk'] = df1['wijknaam_303'].str.replace('[^\w\s]','').replace(" ", "_")
