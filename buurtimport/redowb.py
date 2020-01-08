@@ -146,6 +146,7 @@ mistakecounter = 0
 for index, row in df.iterrows():
     row2017 = df2017.loc[df2017['codering_3'] == row['codering_3']] 
     values2017 = row2017.values.tolist()[0][1:]
+    values2017 = [1000*values2017[0]] + values2017[1:]
 
     wenb = codedict[row['codering_3']]
 
@@ -164,13 +165,26 @@ for index, row in df.iterrows():
 
     print((index / len(df), wenb))
     
-df1['urlname'] = df1['wijkenenbuurten'].str.replace('[^\w\s]','').replace(" ", "_")
-df1['urlwk'] = df1['wijknaam_303'].str.replace('[^\w\s]','').replace(" ", "_")
+df1['urlbu'] = df1['wijkenenbuurten'].where(df1['codering_3'].str.startswith("BU"), np.nan)
 df1['urlgm'] = df1['gemeentenaam_1'].str.replace('[^\w\s]','').replace(" ", "_")
 
-df1['urlname'] = df1['urlname'].str.replace(" ", "_")
+df1['wkmarker'] = df1['codering_3'].str.contains('WK')
+df1['bumarker'] = df1['codering_3'].str.contains('BU')
+maskwk = df1.wkmarker
+maskbu = df1.bumarker
+df1.loc[maskwk, 'urlwk'] = df1.loc[maskwk, 'wijkenenbuurten']
+df1.loc[maskbu, 'urlwk'] = df1.loc[maskbu, 'wijknaam_303']
+
+df1['urlbu'] = df1['urlbu'].str.replace('[^\w\s]','')
+df1['urlwk'] = df1['urlwk'].str.replace('[^\w\s]','')
+df1['urlgm'] = df1['urlgm'].str.replace('[^\w\s]','')
+
+df1['urlbu'] = df1['urlbu'].str.replace(" ", "_")
 df1['urlwk'] = df1['urlwk'].str.replace(" ", "_")
 df1['urlgm'] = df1['urlgm'].str.replace(" ", "_")
+
+del df1['wkmarker']
+del df1['bumarker']
 
 df1.to_sql('wijkbuurt2018', engine)
 print("Wijken, buurten toegevoegd")

@@ -19,7 +19,7 @@ with open(file, 'r', newline='') as csvfile:
     for row in inserttable:
         if row[5] == 'Ingeschreven':
             selectrow = row[0:4] + row[7:11] + row[20:22] + row[23:27]
-            correctrow = [item.strip() for item in selectrow]
+            correctrow = [item.strip().replace("'", "") for item in selectrow]
             for item in correctrow:
                 if len(item) == 0:
                     correctrow[correctrow.index(item)] = None
@@ -32,6 +32,7 @@ with open(file, 'r', newline='') as csvfile:
             elif correctrow[1] == 'BSO':
                 correctrow[1] = 'Buitenschoolse opvang'
 
+            #print(add_line, correctrow)
             cur.execute(add_line, correctrow)
             print("Added %s" % correctrow[2])
 
