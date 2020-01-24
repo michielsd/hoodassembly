@@ -16,8 +16,45 @@ cur = conn.cursor()
 #for pandas
 engine = create_engine('postgresql+psycopg2://buurtuser:123456@localhost/dbbuurt')
 
+#insert neighbourhood names
+wijkbuurtpull = """SELECT codering_3, urlbu, urlwk, urlgm, wijkenenbuurten, gemeentenaam_1 FROM wijkbuurt2018"""
+cur.execute(wijkbuurtpull)
+wijkbuurt = cur.fetchall()
+
+gemeentepush = """INSERT INTO searchbase (searchindex, gmurl, woonplaats) VALUES (%s, %s, %s)"""
+wijkpush = """INSERT INTO searchbase (searchindex, gmurl, wkurl, woonplaats) VALUES (%s, %s, %s, %s)"""
+buurtpush = """INSERT INTO searchbase (searchindex, gmurl, wkurl, buurl, woonplaats) VALUES (%s, %s, %s, %s, %s)"""
+
+for wijk in wijkbuurt:
+    buurttxt = wijk[1]
+    wijktxt = wijk[2]
+    gemeentetxt = wijk[3]
+    naam = wijk[4]
+    woonplaats = wijk[5]
+    print(naam)
+    if wijk[0].startswith("GM"):
+        gemeenteurl = gemeentetxt
+        cur.execute(gemeentepush, (naam, gemeenteurl, woonplaats))
+        conn.commit()
+    elif wijk[0].startswith("WK"):
+        if naam.endswith(woonplaats) and len(naam) > len(woonplaats):
+            naam = naam.replace(woonplaats, "")
+        wijkindex = naam + ", " + woonplaats
+        gemeenteurl = gemeentetxt
+        wijkurl = gemeentetxt + "/" + wijktxt
+        cur.execute(wijkpush, (wijkindex, gemeenteurl, wijkurl, woonplaats))
+    elif wijk[0].startswith("BU"):
+        if naam.endswith(woonplaats):
+            naam = naam.replace(woonplaats, "")
+        buurtindex = naam + ", " + woonplaats
+        gemeenteurl = gemeentetxt
+        wijkurl = gemeentetxt + "/" + wijktxt
+        buurturl = gemeentetxt + "/" + wijktxt + "/" + buurttxt
+        cur.execute(buurtpush, (buurtindex, gemeenteurl, wijkurl, buurturl, woonplaats))
+        conn.commit()
+
 #pull buurtdata
-wijkbuurtpull = """SELECT codering_3, urlname, urlwk, urlgm, wijkenenbuurten FROM wijkbuurt2018"""
+wijkbuurtpull = """SELECT codering_3, urlbu, urlwk, urlgm, wijkenenbuurten FROM wijkbuurt2018"""
 cur.execute(wijkbuurtpull)
 wijkbuurt = cur.fetchall()
 
@@ -79,15 +116,15 @@ for woonplaats in woonplaatsen:
         codes_q = len(set(selectdf.loc[:, 'bu_code'].values))
 
         if codes_q == 1:
-            
+            print(selectdf.values[0])
             gmcode = selectdf.loc[:, 'gem_code'].values[0]
             wkcode = selectdf.loc[:, 'wk_code'].values[0]
             bucode = selectdf.loc[:, 'bu_code'].values[0]
 
             searchindex = "%s, %s" % (straat[0], woonplaats)
-            gmurl = urldict[gmcode][0]
+            gmurl = urldict[gmcode][2]
             if wkcode in urldict:
-                wkurl = urldict[wkcode][2] + "/" + urldict[wkcode][0]
+                wkurl = urldict[wkcode][2] + "/" + urldict[wkcode][1]
                 buurl = urldict[bucode][2] + "/" + urldict[bucode][1] + "/" + urldict[bucode][0]
             else:
                 wkurl = None
@@ -98,18 +135,14 @@ for woonplaats in woonplaatsen:
             print(datainsert)
         else:
             for index, row in selectdf.iterrows():
+                print(row)
                 idnr = row['id']
-                if row['huisletter']:
-                    fulladdress = row['openbareruimte'] + " " + row['huisnummer'] + "-" +  row['huisletter'] + ", " + row['woonplaats']
-                elif row['huisnummertoevoeging']:
-                    fulladdress = row['openbareruimte'] + " " + row['huisnummer'] + "-" + row['huisnummertoevoeging'] + ", " + row['woonplaats']
-                else:
-                    fulladdress = row['openbareruimte'] + " " + row['huisnummer'] + ", " + row['woonplaats']
+                fulladdress = row['openbareruimte'] + " " + row['huisnummer'] + ", " + row['woonplaats']
 
-                gemeenteurl = urldict[row['gem_code']][0]
+                gemeenteurl = urldict[row['gem_code']][2]
                 
                 if row['wk_code'] in urldict:
-                    wijkurl = urldict[row['wk_code']][2] + "/" + urldict[row['wk_code']][0]
+                    wijkurl = urldict[row['wk_code']][2] + "/" + urldict[row['wk_code']][1]
                     buurturl = urldict[row['bu_code']][2] + "/" + urldict[row['bu_code']][1] + "/" + urldict[row['bu_code']][0]
                 else:
                     wijkurl = None
@@ -136,7 +169,6 @@ for woonplaats in woonplaatsen:
     conn.commit()
     print("INSERT SUCCESFUL")
     
-
     
 
 
