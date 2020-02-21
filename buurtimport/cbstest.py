@@ -4,6 +4,7 @@ import csv
 """
 datasets
 
+84583NED: wijken buurten 2019
 84286NED: wijken buurten 2018
 84415NED: gemeentelijke heffingen
 83765NED: wijken buurten 2017
@@ -13,9 +14,10 @@ datasets
 82339NED: wijken buurten 2013
 
 
+
 """
 
-info = cbsodata.get_data('82339NED')
+info = cbsodata.get_data('84583NED')
 
 infolist = []
 
@@ -35,7 +37,7 @@ for row in info:
 
 
 #write to file
-filename = 'buurtdata2013.csv'
+filename = 'buurtdata2019.csv'
 with open(filename, 'w', newline='') as newfile:
         writer = csv.writer(newfile)
         writer.writerows(infolist)

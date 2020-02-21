@@ -2,7 +2,13 @@ import shapefile
 import shapely.geometry
 import pandas as pd
 
-shapefile = shapefile.Reader('gm2018')
+shapefile = shapefile.Reader('2019/bu_2019')
+
+##############################################
+# toevoegen aan dbf files:                  #
+# CEN_LON,C,20  CEN_LAT,C,20  MAX_DIST,C,20 #
+#############################################
+
 
 centroidlist = []
 for item in range(0,len(shapefile)):

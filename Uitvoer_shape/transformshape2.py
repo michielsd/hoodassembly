@@ -1,7 +1,13 @@
 from osgeo import ogr, osr
 import os
 
-# ogr2ogr -a_srs EPSG:4326 gm2018.shp gem_2018.shp
+#  deze transformatie eerst kopie maken met andere EPSG met onderstaande code
+# ogr2ogr -a_srs EPSG:4326 INPUTFILE.shp OUTPUTFILE.shp
+
+# ogr2ogr -a_srs EPSG:4326 wijk_2019_v1.shp wk_2019.shp
+###################################################
+
+
 
 driver = ogr.GetDriverByName('ESRI Shapefile')
 
@@ -17,11 +23,11 @@ outSpatialRef.ImportFromEPSG(4326)
 coordTrans = osr.CoordinateTransformation(inSpatialRef, outSpatialRef)
 
 # get the input layer
-inDataSet = driver.Open(r'gem_2018.shp')
+inDataSet = driver.Open(r'2019/wijk_2019_v1.shp')
 inLayer = inDataSet.GetLayer()
 
 # create the output layer
-outputShapefile = r'gm2018.shp'
+outputShapefile = r'2019/wk_2019.shp'
 if os.path.exists(outputShapefile):
     driver.DeleteDataSource(outputShapefile)
 outDataSet = driver.CreateDataSource(outputShapefile)

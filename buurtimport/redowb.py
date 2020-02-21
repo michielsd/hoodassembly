@@ -33,7 +33,7 @@ for row in provtuple:
 engine = create_engine('postgresql+psycopg2://buurtuser:123456@localhost/dbbuurt')
 
 #read 2018 from csv
-df = pd.read_csv('buurtdata2018.csv', encoding='Windows-1252', index_col=0)
+df = pd.read_csv('buurtdata2019.csv', encoding='Windows-1252', index_col=0)
 
 print(df)
 
@@ -68,6 +68,20 @@ df['pctoverigallo_206'] = round(100*df['overignietwesters_23'] / df['aantalinwon
 df['pctdiefstal_207'] = round(10000*df['totaaldiefstaluitwoningschuured_78'] / df['aantalinwoners_5'], 1) 
 df['pctvernieling_208'] = round(10000*df['vernielingmisdrijftegenopenbareorde_79'] / df['aantalinwoners_5'], 1)
 df['pctgeweld_209'] = round(10000*df['geweldsenseksuelemisdrijven_80'] / df['aantalinwoners_5'], 1)
+
+df.loc[
+    (df['wijkenenbuurten'] == "'s-Gravenhage")
+]['wijkenenbuurten'] = "Den Haag"
+df.loc[
+    (df['gemeentenaam_1'] == "'s-Gravenhage")
+]['gemeentenaam_1'] = "Den Haag"
+df.loc[
+    (df['wijkenenbuurten'] == "'s-Hertogenbosch")
+]['wijkenenbuurten'] = "Den Bosch"
+df.loc[
+    (df['gemeentenaam_1'] == "''s-Hertogenbosch")
+]['gemeentenaam_1'] = "Den Bosch"
+
 
 #make dict voor juist wijkenenbuurten
 predict = {}
