@@ -23,6 +23,6 @@ df.columns = columnlist
 
 print(df)
 
-df.to_sql('matchold', engine)
+df.to_sql('match1718', engine)
 
 print('Success')

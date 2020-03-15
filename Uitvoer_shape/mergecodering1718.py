@@ -41,29 +41,65 @@ def FindShape(j, dataobject, code, shapes):
 
 
 #data invoer
-gem2018 = pd.read_csv('2019/gm_2019.csv', encoding="Windows-1252")
-wijk2018 = pd.read_csv('2019/wk_2019.csv', encoding="Windows-1252")
-buurt2018 = pd.read_csv('2019/bu_2019.csv', encoding="Windows-1252")
+gem2018 = Dbf5('gem_2018.dbf').to_dataframe()
+wijk2018 = Dbf5('wijk_2018.dbf').to_dataframe()
+buurt2018 = Dbf5('buurt2018.dbf').to_dataframe()
 
-gem2018s = shapefile.Reader('2019/gm_2019')
-wijk2018s = shapefile.Reader('2019/wk_2019')
-buurt2018s = shapefile.Reader('2019/bu_2019')
+gem2018s = shapefile.Reader('gem_2018')
+wijk2018s = shapefile.Reader('wijk_2018')
+buurt2018s = shapefile.Reader('buurt2018')
 
-gem2017 = Dbf5('gem_2018.dbf').to_dataframe()
-wijk2017 = Dbf5('wijk_2018.dbf').to_dataframe()
-buurt2017 = Dbf5('buurt2018.dbf').to_dataframe()
+gem2017 = Dbf5('gem_2017.dbf').to_dataframe()
+wijk2017 = Dbf5('wijk_2017.dbf').to_dataframe()
+buurt2017 = Dbf5('buurt_2017.dbf').to_dataframe()
 
-gem2017s = shapefile.Reader('gm2018')
-wijk2017s = shapefile.Reader('wk2018')
-buurt2017s = shapefile.Reader('bu2018')
+gem2017s = shapefile.Reader('gem_2017')
+wijk2017s = shapefile.Reader('wijk_2017')
+buurt2017s = shapefile.Reader('buurt_2017')
 
-data2018 = pd.read_csv('C:/Dashboard/Buurt2/Dataimport/buurtimport/buurtdata2019.csv', encoding="Windows-1252")
-data2017 = pd.read_csv('C:/Dashboard/Buurt2/Dataimport/buurtimport/buurtdata2018.csv', encoding="Windows-1252")
+data2018 = pd.read_csv('C:/Dashboard/Buurt2/Dataimport/buurtimport/buurtdata2018.csv', encoding="Windows-1252")
+data2017 = pd.read_csv('C:/Dashboard/Buurt2/Dataimport/buurtimport/buurtdata2017.csv', encoding="Windows-1252")
 
 data2018['Codering_3'] = data2018['Codering_3'].str.strip()
 data2017['Codering_3'] = data2017['Codering_3'].str.strip()
 
 herindeling = {}
+herindeling['Leeuwarden'] = [
+    2017, {
+        'Leeuwarden': 1
+        , 'Leeuwarderadeel': 1
+        , 'Littenseradiel': 0.32
+    }
+]
+herindeling['Midden-Groningen'] = [
+    2017, {
+        'Hoogezand-Sappemeer': 1
+        , 'Menterwolde': 1
+        , 'Slochteren': 1
+    }
+]
+herindeling['Waadhoeke'] = [
+    2017, {
+        'Franekeradeel': 1
+        , 'het Bildt': 1
+        , 'Menameradiel': 1
+        , 'Littenseradiel': 0.17
+    }
+]
+herindeling['Westerwolde'] = [
+    2017, {
+        'Bellingwedde': 1
+        , 'Vlagtwedde': 1
+    }
+]
+herindeling['Zevenaar'] = [
+    2017, {
+        'Rijnwaarden': 1
+        , 'Zevenaar': 1
+    }
+]
+
+"""
 herindeling['Groningen'] = [
     2018, {
         'Groningen': 1
@@ -161,6 +197,7 @@ herindeling['West Betuwe'] = [
         , 'Neerijnen': 1
     }
 ]
+"""
 
 #in één lijst
 lijst2018 = []
@@ -267,7 +304,7 @@ for i in matchlist2018:
                 shortcode = code[:6]
                 soortcode = "%s_CODE" % (shortcode[:2])
                 koppelcodes = gemdict[shortcode[2:]]
-                icentroid = FindCentroid(code, sd18[soortcode][0], soortcode, sd18[soortcode][1])
+                centroid = FindCentroid(code, sd18[soortcode][0], soortcode, sd18[soortcode][1])
 
                 preselection = []
                 for j in range(0, len(koppelcodes)):
@@ -300,7 +337,6 @@ for i in matchlist2018:
                     print("code", code)
                     print("koppelcodes", koppelcodes)
                     print("preselection", preselection)
-                    print(centroidmatches)
                     jointlijst.append([code])
 
             elif indeling == '3':
@@ -319,7 +355,7 @@ for i in matchlist2018:
                 matches3 = []
                 for k in lijst2017:
                     for l in preselection:
-                        if k.startswith(l) and not k.endswith('99'):
+                        if k.startswith(l):
                             kshape = FindShape(k, sd17[soortcode][0], soortcode, sd17[soortcode][1])
                             kcentroid = FindCentroid(k, sd17[soortcode][0], soortcode, sd17[soortcode][1])
                             if kshape.contains(icentroid) or ishape.contains(kcentroid):
@@ -330,8 +366,105 @@ for i in matchlist2018:
 
                 if len(matches3) == 0:
                     print("NO MATCHES", code, preselection)
-    else:
-        print(i)
 
 df = pd.DataFrame.from_records(jointlijst)
 df.to_csv("matchlist.csv")
+
+
+
+"""
+else:
+        if i.startswith("GM"):
+            gmmatches = []
+            ishape = FindShape(i, gem2018, 'GM_CODE', gem2018s)
+
+            for gm in lijst2017:
+                if gm.startswith(i[:3]):
+                    gmshape = FindShape(gm, gem2017, 'GM_CODE', gem2017s)
+                    if gmshape.intersects(ishape):
+                        gmmatches.append(gm)
+
+            #for gm in selectgm:
+            #    gmshape = FindShape(gm, gem2017, 'GM_CODE', gem2017s)
+            #    if gmshape.intersects(ishape):
+            #        gmmatches.append(gm)
+
+            jointlijst.append([i] + gmmatches)
+            gmdict[i] = gmmatches
+            print([i] + gmmatches)
+
+        elif i.startswith("WK"):
+            wkmatches = []
+            ishape = FindShape(i, wijk2018, 'WK_CODE', wijk2018s)
+
+            # match voor wijken in de buurt
+            for wk in lijst2017:
+                if wk.startswith(i[:5]):
+                    wkshape = FindShape(wk, wijk2017, 'WK_CODE', wijk2017s)
+                    if wkshape.intersects(ishape):
+                        wkmatches.append(wk)
+
+            # match voor heringedeelde gemeenten
+            if not wkmatches:
+                gmkey = "GM%s" % (i[2:-2])
+                gmlist = gmdict[gmkey]
+                print(gmkey, gmlist)
+
+                for wk in lijst2017:
+                    for gwk in gmlist:
+                        if wk.startswith("WK%s" % (gwk[2:])):
+                            print(wk)
+                            wkshape = FindShape(wk, wijk2017, 'WK_CODE', wijk2017s)
+                            if wkshape.intersects(ishape):
+                                wkmatches.append(wk)
+
+            # vangt de rest
+            if not wkmatches:
+                for wk in lijst2017:
+                    if wk.startswith("WK"):
+                        wkshape = FindShape(wk, wijk2017, 'WK_CODE', wijk2017s)
+                        if wkshape.intersects(ishape):
+                            wkmatches.append(wk)
+
+            jointlijst.append([i] + wkmatches)
+            wkdict[i] = wkmatches
+            print([i] + wkmatches)
+
+        elif i.startswith("BU"):
+            bumatches = []
+            ishape = FindShape(i, buurt2018, 'BU_CODE', buurt2018s)
+
+            # match voor buurten in de buurt
+            for bu in lijst2017:
+                if bu.startswith(i[:5]):
+                    bushape = FindShape(bu, buurt2017, 'BU_CODE', buurt2017s)
+                    if bushape.intersects(ishape):
+                        bumatches.append(bu)
+
+            # match voor buurten in heringedeelde wijken
+            if not wkmatches:
+                wkkey = "WK%s" % (i[2:-3])
+                wklist = wkdict[wkkey]
+                print(wkkey, wklist)
+                for wk in lijst2017:
+                    for gbu in wklist:
+                        if wk.startswith("BU%s" % (gbu[2:])):
+                            wkshape = FindShape(wk, buurt2017, 'BU_CODE', buurt2017s)
+                            if wkshape.intersects(ishape):
+                                bumatches.append(wk)            
+
+            # voor de rest
+            if not bumatches:
+                for wk in lijst2017:
+                    if wk.startswith("BU"):
+                        wkshape = FindShape(wk, buurt2017, 'BU_CODE', buurt2017s)
+                        if wkshape.intersects(ishape):
+                            wkmatches.append(wk)
+
+            jointlijst.append([i] + bumatches)
+            print([i] + bumatches)
+
+
+
+
+"""

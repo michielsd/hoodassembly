@@ -1,0 +1,25 @@
+Nieuw jaar laden:
+
+1. Nieuwe geodata inladen.
+	i replace -99999999 values in dbf
+	ii transform shape - transformshape2.py
+	iii voeg toe cen lon cen lat maxdist calccentroid.py
+	iv laad in via load_bu, wk, gm in showhood
+
+2. Koppel oude en nieuwe buurten
+	i run mergecodering. Koppeling is nieuw naar oud.
+	ii run matchimport om in sql te zetten
+	iii run jaaroverslaan om meerdere jaren te koppelen
+
+3. Rerun redowb met nieuw jaar
+	i update provbase met https://www.cbs.nl/nl-nl/onze-diensten/methoden/classificaties/overig/gemeentelijke-indelingen-per-jaar/indeling%20per%20jaar/gemeentelijke-indeling-op-1-januari-2019	
+	ii mind Nuenen Gerwenx
+
+4. Find sons, neighbours
+	i rewrite sons and neighbours
+
+4. Vernieuw BAG en search register
+
+
+
+WK196608

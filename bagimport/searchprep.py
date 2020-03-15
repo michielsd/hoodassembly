@@ -25,12 +25,29 @@ gemeentepush = """INSERT INTO searchbase (searchindex, gmurl, woonplaats) VALUES
 wijkpush = """INSERT INTO searchbase (searchindex, gmurl, wkurl, woonplaats) VALUES (%s, %s, %s, %s)"""
 buurtpush = """INSERT INTO searchbase (searchindex, gmurl, wkurl, buurl, woonplaats) VALUES (%s, %s, %s, %s, %s)"""
 
+
 for wijk in wijkbuurt:
     buurttxt = wijk[1]
     wijktxt = wijk[2]
     gemeentetxt = wijk[3]
+    
+    ###########################
+    # Placeholders Haag/Bosch #
+    ###########################
+    if gemeentetxt == "'s-Hertogenbosch":
+        gemeentetxt = "Den Bosch"
+    if gemeentetxt == "'s-Gravenhage":
+        gemeentetxt = "Den Haag"
     naam = wijk[4]
+    if naam == "'s-Hertogenbosch":
+        naam = "Den Bosch"
+    if naam == "'s-Gravenhage":
+        naam = "Den Haag"
     woonplaats = wijk[5]
+    if woonplaats == "'s-Hertogenbosch":
+        woonplaats = "Den Bosch"
+    if woonplaats == "'s-Gravenhage":
+        woonplaats = "Den Haag"
     print(naam)
     if wijk[0].startswith("GM"):
         gemeenteurl = gemeentetxt
@@ -123,6 +140,18 @@ for woonplaats in woonplaatsen:
 
             searchindex = "%s, %s" % (straat[0], woonplaats)
             gmurl = urldict[gmcode][2]
+            ###########################
+            # Placeholders Haag/Bosch #
+            ###########################
+            if woonplaats == "'s-Hertogenbosch":
+                woonplaats = "Den Bosch"
+            if woonplaats == "'s-Gravenhage":
+                woonplaats = "Den Haag"
+            if gmurl == "sHertogenbosch":
+                gmurl = "Den Bosch"
+            if gmurl == "sGravenhage":
+                gmurl = "Den Haag"
+
             if wkcode in urldict:
                 wkurl = urldict[wkcode][2] + "/" + urldict[wkcode][1]
                 buurl = urldict[bucode][2] + "/" + urldict[bucode][1] + "/" + urldict[bucode][0]

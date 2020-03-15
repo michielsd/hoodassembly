@@ -11,20 +11,14 @@ except:
 
 cur = conn.cursor()
 
-provpull = """SELECT code, gemeente, provincie FROM provbase"""
-cur.execute(provpull)
-provtuple = cur.fetchall()
-
-pullmatchold = """SELECT current, old FROM matchold"""
+pullmatchold = """SELECT current, old FROM match1719"""
 cur.execute(pullmatchold)
-matchold = cur.fetchall()
+matchtuple = cur.fetchall()
+matchold = [['NL00', 'NL00']]
+for row in matchtuple:
+    matchold.append(row)
 
 conn.close()
-
-provdict = {}
-for row in provtuple:
-    print(row)
-    provdict[row[0]] = row[2]
 
 engine = create_engine('postgresql+psycopg2://buurtuser:123456@localhost/dbbuurt')
 
@@ -51,10 +45,104 @@ df['pctkinderen_201'] = round(100*df['k_0tot15jaar_8'] / df['aantalinwoners_5'],
 df['pctstudenten_202'] = round(100*df['k_15tot25jaar_9'] / df['aantalinwoners_5'], 1)
 df['pctbijstand_203'] = round(100*df['personenpersoortuitkeringbijstand_74'] / df['aantalinwoners_5'], 1)  
 
-#add neighbourhoods not existing in 2017
+emptyref = []
 for code in matchold:
-    
+    newcode = code[0]
+    oldcode = code[1]
+
+    if len(oldcode) == 1:
+        income = None
+        hhhigh = None
+        hhlow = None
+        welfare = None
+
+        rightrow = df.loc[df['codering_3'] == oldcode]
+
+        if not rightrow['gemiddeldinkomenperinkomensontvanger_65'].empty:
+            income = rightrow['gemiddeldinkomenperinkomensontvanger_65'].values[0]
+
+        if not rightrow['k_20huishoudensmethoogsteinkomen_71'].empty:
+            hhhigh = rightrow['k_20huishoudensmethoogsteinkomen_71'].values[0]
+
+        if not rightrow['huishoudensmeteenlaaginkomen_72'].empty:
+            hhlow = rightrow['huishoudensmeteenlaaginkomen_72'].values[0]
+
+        if not rightrow['pctbijstand_203'].empty:
+            welfare = rightrow['pctbijstand_203'].values[0]
+
+        newline = [newcode, income, hhhigh, hhlow, welfare]
+        print(newline)
+        emptyref.append(newline)
+
+    elif len(oldcode) > 1:
+        oldcodes = oldcode.split(";")
+
+        # ready variable set
+        income = 0
+        ino = 0
+        
+        hhhigh = 0
+        hno = 0
+        
+        hhlow = 0
+        lno = 0
+        
+        welfare = 0
+        wno = 0
+
+        for c in oldcodes:
+            rightrow = df.loc[df['codering_3'] == c]
+
+            if not rightrow['gemiddeldinkomenperinkomensontvanger_65'].empty:
+                income += rightrow['gemiddeldinkomenperinkomensontvanger_65'].values[0]
+                ino += 1
+            if not rightrow['k_20huishoudensmethoogsteinkomen_71'].empty:
+                hhhigh += rightrow['k_20huishoudensmethoogsteinkomen_71'].values[0]
+                hno += 1
+            if not rightrow['huishoudensmeteenlaaginkomen_72'].empty:
+                hhlow += rightrow['huishoudensmeteenlaaginkomen_72'].values[0]
+                lno += 1
+            if not rightrow['pctbijstand_203'].empty:
+                welfare += rightrow['pctbijstand_203'].values[0]
+                wno += 1
+
+
+        avincome = None
+        avhigh = None
+        avlow = None
+        avfare = None
+
+        if ino > 0:
+            avincome = str(round(income / ino, 1))
+        if hno > 0:
+            avhigh = str(round(hhhigh / hno, 1))
+        if lno > 0: 
+            avlow = str(round(hhlow / lno, 1))
+        if wno > 0:
+            avfare = str(round(welfare / wno, 1))
+
+
+        newline = [newcode, avincome, avhigh, avlow, avfare]
+        print(newline)
+        emptyref.append(newline)
+
+
+dfexp = pd.DataFrame(emptyref)
+
+columnlist = ['codering_3', 'gemiddeldinkomenperinkomensontvanger_65', 'k_20huishoudensmethoogsteinkomen_71', 'huishoudensmeteenlaaginkomen_72', 'pctbijstand_203']
+
+dfexp.columns = columnlist
+
+print(dfexp)
+
+dfexp.to_sql('wijkbuurt201719', engine)
+print("Wijken, buurten toegevoegd")
+print('Succes!')
+
+"""    
+    # if not in 18 and one old code
     if code[0] != code[1] and code[0] != '0':
+        
         newcode = code[0]
         oldcode = code[1]
 
@@ -66,17 +154,18 @@ for code in matchold:
         rightrow = df.loc[df['codering_3'] == oldcode]
 
         if not rightrow['gemiddeldinkomenperinkomensontvanger_65'].empty:
-            income = rightrow['gemiddeldinkomenperinkomensontvanger_65'].item()
+            income = rightrow['gemiddeldinkomenperinkomensontvanger_65'].values[0]
 
         if not rightrow['k_20huishoudensmethoogsteinkomen_71'].empty:
-            hhhigh = rightrow['k_20huishoudensmethoogsteinkomen_71'].item()
+            hhhigh = rightrow['k_20huishoudensmethoogsteinkomen_71'].values[0]
 
         if not rightrow['huishoudensmeteenlaaginkomen_72'].empty:
-            hhlow = rightrow['huishoudensmeteenlaaginkomen_72'].item()
+            hhlow = rightrow['huishoudensmeteenlaaginkomen_72'].values[0]
 
         if not rightrow['pctbijstand_203'].empty:
-            welfare = rightrow['pctbijstand_203'].item()
+            welfare = rightrow['pctbijstand_203'].values[0]
 
+        print(code[0], income, hhhigh, hhlow, welfare)
         length = len(df)
         df.loc[length] = [np.nan] * len(df.columns)
         df.at[length, 'codering_3'] = newcode
@@ -137,7 +226,8 @@ for code in matchold:
             avlow = str(round(hhlow / lno, 1))
         if wno > 0:
             avfare = str(round(welfare / wno, 1))
-
+ b
+        print(code[0], income, hhhigh, hhlow, welfare)
         length = len(df)
         df.loc[length] = [np.nan] * len(df.columns)
         df.at[length, 'codering_3'] = newcode
@@ -145,8 +235,5 @@ for code in matchold:
         df.at[length, 'k_20huishoudensmethoogsteinkomen_71'] = round(avhigh, 1)
         df.at[length, 'huishoudensmeteenlaaginkomen_72'] = round(avlow, 1)
         df.at[length, 'pctbijstand_203'] = round(avfare, 1)
+""" 
 
-
-df.to_sql('wijkbuurt2017', engine)
-print("Wijken, buurten toegevoegd")
-print('Succes!')

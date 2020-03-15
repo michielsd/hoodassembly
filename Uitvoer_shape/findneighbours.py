@@ -71,7 +71,7 @@ for code in groslijst:
             if jshape.intersects(ishape) and j != i:
                 insertcode.append(j)
 
-    if i.startswith("WK"):
+    elif i.startswith("WK"):
         gmcode = "GM" + i[2:-2]
         sublist = [i[:-2]]
         cur.execute(pullphrase, (gmcode,))
@@ -90,7 +90,7 @@ for code in groslijst:
                 if jshape.intersects(ishape) and j != i:
                     insertcode.append(j)
 
-    if i.startswith("BU"):
+    elif i.startswith("BU"):
         wkcode = "WK" + i[2:-2]
         sublist = [i[:-2]]
         cur.execute(pullphrase, (wkcode,))

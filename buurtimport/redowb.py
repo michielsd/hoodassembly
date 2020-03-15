@@ -14,7 +14,7 @@ except:
 cur = conn.cursor()
 
 # pull data sql
-provpull = """SELECT code, gemeente, provincie FROM provbase"""
+provpull = """SELECT code, provincie FROM provbase"""
 cur.execute(provpull)
 provtuple = cur.fetchall()
 
@@ -28,7 +28,7 @@ conn.close()
 provdict = {}
 for row in provtuple:
     print(row)
-    provdict[row[0]] = row[2]
+    provdict[row[0]] = row[1]
 
 engine = create_engine('postgresql+psycopg2://buurtuser:123456@localhost/dbbuurt')
 
@@ -38,7 +38,7 @@ df = pd.read_csv('buurtdata2019.csv', encoding='Windows-1252', index_col=0)
 print(df)
 
 #read 2017 from sql
-pull2017 = """SELECT codering_3, gemiddeldinkomenperinkomensontvanger_65, k_20huishoudensmethoogsteinkomen_71, huishoudensmeteenlaaginkomen_72, pctbijstand_203 FROM wijkbuurt2017"""
+pull2017 = """SELECT codering_3, gemiddeldinkomenperinkomensontvanger_65, k_20huishoudensmethoogsteinkomen_71, huishoudensmeteenlaaginkomen_72, pctbijstand_203 FROM wijkbuurt201719"""
 df2017 = pd.read_sql_query(pull2017, engine)
 
 bestanden = [
@@ -158,9 +158,14 @@ print("")
 
 mistakecounter = 0
 for index, row in df.iterrows():
-    row2017 = df2017.loc[df2017['codering_3'] == row['codering_3']] 
-    values2017 = row2017.values.tolist()[0][1:]
-    values2017 = [1000*values2017[0]] + values2017[1:]
+    row2017 = df2017.loc[df2017['codering_3'] == row['codering_3']]
+    #voor fout in koppeling!!!
+    try:
+        values2017 = row2017.values.tolist()[0][1:]
+        income = 100*int(100*float(values2017[0]))
+        values2017 = [income] + values2017[1:]
+    except:
+        values2017 = [None, None, None, None]
 
     wenb = codedict[row['codering_3']]
 
@@ -178,6 +183,7 @@ for index, row in df.iterrows():
         df1.loc[len(df1)] = [wenb] + row.values.tolist()[1:] + values2017 + ["gemeente"] + [""] + [provdict[row['codering_3']]] + [None]
 
     print((index / len(df), wenb))
+    #df1.to_csv('test.csv')
     
 df1['urlbu'] = df1['wijkenenbuurten'].where(df1['codering_3'].str.startswith("BU"), np.nan)
 df1['urlgm'] = df1['gemeentenaam_1'].str.replace('[^\w\s]','').replace(" ", "_")
@@ -200,7 +206,7 @@ df1['urlgm'] = df1['urlgm'].str.replace(" ", "_")
 del df1['wkmarker']
 del df1['bumarker']
 
-df1.to_sql('wijkbuurt2018', engine)
+df1.to_sql('wijkbuurt2019', engine)
 print("Wijken, buurten toegevoegd")
 print("Misfires: %d" % mistakecounter)
 print('Succes!')
