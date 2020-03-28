@@ -58,25 +58,12 @@ def SplitBag(baglist, keyclue, buurtdata, key, buurten):
 def MatchBag(address, keyclue, keyprev, buurtdata, key, buurten):
 
     location = Point(float(address[4]), float(address[5]))
-    clueshape = FindShape(keyclue, buurtdata, key, buurten)
 
+    altgm = "%s" % keyclue[2:]
     juistebucode = False
 
-    if clueshape.contains(location):
-        juistebucode = keyclue
-        juistewkcode = "WK%s" % keyclue[2:-2]
-        juistegmcode = "GM%s" % keyclue[2:-4]
-    elif len(keyprev) > 0:
-        for prev in keyprev:
-            prevshape = FindShape(prev, buurtdata, key, buurten)
-            if prevshape.contains(location):
-                juistebucode = prev
-                juistewkcode = "WK%s" % prev[2:-2]
-                juistegmcode = "GM%s" % prev[2:-4]
-                break
-    
-    if not juistebucode:
-        for index, buurt in buurtdata.iterrows():
+    for index, buurt in buurtdata.iterrows():
+        if buurt['BU_CODE'].startswith('BU1969') or buurt['BU_CODE'].startswith('BU1966'):
             buurtcode = buurt['BU_CODE']
             buurtshape = FindShape(buurtcode, buurtdata, key, buurten)
             if buurtshape.contains(location):
@@ -84,8 +71,12 @@ def MatchBag(address, keyclue, keyprev, buurtdata, key, buurten):
                 juistewkcode = "WK%s" % buurtcode[2:-2]
                 juistegmcode = "GM%s" % buurtcode[2:-4]
                 break
+    
+    if juistebucode:
+        return [juistegmcode, juistewkcode, juistebucode]
+    else:
+        return [altgm, None, None]
 
-    return [juistegmcode, juistewkcode, juistebucode]
 
 
 try:
@@ -115,7 +106,10 @@ for line in newold:
         nrcounter += 1
         nrdict[line[0]] = [str(nrcounter), str(round(100*nrcounter / 13594, 2))]
 
-bagpull = """SELECT openbareruimte, huisnummer, postcode, woonplaats, lon, lat, gem_code, wk_code, bu_code FROM bagadres WHERE bu_code = %s"""
+bagpull = """SELECT openbareruimte, huisnummer, postcode, woonplaats, lon, lat, gem_code, wk_code, bu_code FROM bagadres WHERE bu_code = %s LIMIT 1"""
+
+bagpull = """SELECT openbareruimte, huisnummer, postcode, woonplaats, lon, lat, gem_code, wk_code, bu_code FROM bagadres WHERE bu_code LIKE %s"""
+
 newbagcheck = """SELECT bu_code FROM newbag WHERE bu_code = %s LIMIT 1"""
 
 bagpush = """INSERT INTO newbag (openbareruimte, huisnummer, postcode, woonplaats, lon, lat, gem_code, wk_code, bu_code) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
@@ -124,67 +118,91 @@ bagpushstreet = """INSERT INTO newbag (openbareruimte, postcode, woonplaats, gem
 
 bagupdateaddress = """UPDATE bagadres SET gem_code = %s, wk_code = %s, bu_code = %s WHERE openbareruimte = %s AND huisnummer = %s AND postcode = %s""" 
 bagupdatestreet = """UPDATE bagadres SET gem_code = %s, wk_code = %s, bu_code = %s WHERE openbareruimte = %s AND postcode = %s"""
+bagupdatebuurt = """UPDATE bagadres SET gem_code = %s, wk_code = %s, bu_code = %s WHERE bu_code = %s""" 
+
+
 
 progressdf = pd.read_csv("progressdf.csv", index_col=0)
 
+#HERSTEL EZING ETC.
+
+faulty = {
+    #'1966' : ['0005', '1651', '1663', '0053'],
+    '0014' : ['0009', '0017'],
+    '1969' : ['0015', '0022', '0025', '0056'],
+    '1970' : ['0058', '0079', '1722'],
+    '1960' : ['0236', '0304', '0733'],
+    '0394' : ['0393'],
+    '1961' : ['0545', '0620', '0707'],
+    '1963' : ['0584', '0585', '0588', '0611', '0617'],
+    '1978' : ['0689', '1927'],
+    '1959' : ['0738', '0870', '0874'],
+    '1954' : ['0881', '0951', '0962']
+}
+
+redo = ['1966', '0053', '1969']
+
+for code in redo:
+    keyphrase = "BU%s" % code
+
+
+    valuephrase = "BU%s%%" % code
+    cur.execute(bagpull, (valuephrase,))
+    faultyhits = cur.fetchall()
+    
+    if len(faultyhits) > 0:
+        bagwithinteger = []
+        streetpostcodes = []
+        for line in faultyhits:
+            streetpostcodes.append((line[0], line[2]))
+            bagwithinteger.append([line[0]] + [int(line[1])] + list(line[2:]))
+
+        streetpostcodes = set(streetpostcodes)
+        keyprev = "BU00030000"
+
+        for street in streetpostcodes:
+
+            streetbag = [i for i in bagwithinteger if i[0] == street[0] and i[2] == street[1]]
+            streetbag.sort(key = lambda x : x[1])
+            middlestreet = streetbag[int(len(streetbag) / 2)]
+            middleresult = MatchBag(middlestreet, keyphrase, keyprev, buurtdata, "BU_CODE", buurten)
+            print("CHECKING %s: %s, %s" % (code, middlestreet[0], middlestreet[3]))
+            insertline = tuple(middleresult + [middlestreet[0]] + [middlestreet[2]])
+            
+            if not middleresult[0].endswith(code):
+                cur.execute(bagupdatestreet, (insertline))
+                conn.commit()
+                print("UPDATED AND COMMITTED %s: %s, %s" % (code, middlestreet[0], middlestreet[3]))
+                print(code, insertline)
+
+
+
+"""
 #551 blijft hangen: BU00850111.
 for line in codelist:
     key = line[0]
     values = line[1:]
-    if len(values) == 1 and key.startswith("BU"):
-        pass
-        """
+    if len(values) == 1 and key.startswith("BU1969") and key != values[0]:
         print("Checking %s. Ordernr %s,  %s percent - codes identical" % (key, nrdict[key][0], nrdict[key][1]))
-        cur.execute(newbagcheck, (key,))
-        checkdata = cur.fetchall()
-        if not len(checkdata) > 0:
-            cur.execute(bagpull, (key,))
-            valuedata = cur.fetchall()
-            if valuedata: #sommige buurten hebben kennelijk geen addressen..?
-                cur.executemany(bagpush, tuple(valuedata))
-                conn.commit()
-                print("Updated and committed %s - %s" % (key, valuedata[-1][3]))
-    """
-    if len(values) > 1 and key.startswith("BU"):
-        print("Checking %s. Ordernr %s,  %s percent - recoded" % (key, nrdict[key][0], nrdict[key][1]))
-        for value in values:
-            dbcheck = progressdf.loc[progressdf['codes'] == key]['codes'].values
+        
+        gem_code = "GM%s" % key[2:-4] 
+        wk_code = "WK%s" % key[2:-2]
+        bu_code = key
 
-            if len(dbcheck) == 0:
+        cur.execute(bagupdatebuurt, (gem_code, wk_code, bu_code, values[0]))
+        conn.commit()
+        #print("Updated and committed %s - %s" % (key, valuedata[-1][3]))
 
-                cur.execute(bagpull, (value,))
-                redolines = cur.fetchall()
-                print("redolines")
-                if len(redolines) > 0:
-                    redoresults = SplitBag(redolines, key, buurtdata, "BU_CODE", buurten)
-                    print("redoresults")
-                    addresslist = False
-                    if redoresults:
-                        streetpush = []
-                        addresspush = []
-                        for address, codes in redoresults.items():
-                            addresslist = address.split(";")
-                            #for insert into
-                            pushline = addresslist + codes
+        
+        cur.execute(bagpull, (values[0],))
+        valuedata = cur.fetchall()
+        
+        if valuedata: #sommige buurten hebben kennelijk geen addressen..?
+            gem_code = "GM%s" % key[2:-4] 
+            wk_code = "WK%s" % key[2:-2]
+            bu_code = key
 
-                            if len(addresslist) == 2:
-                                #for update
-                                pushline = codes + addresslist
-                                streetpush.append(tuple(pushline))
-                            elif len(addresslist) == 3:
-                                #for update
-                                pushline = codes + addresslist
-                                addresspush.append(tuple(pushline))
-                        
-                        if streetpush:
-                            cur.executemany(bagupdatestreet, tuple(streetpush))
-                            conn.commit()
-                            print("Updated and committed %s - %s" % (key, addresslist[-1]))
-                        elif addresspush:
-                            cur.executemany(bagupdateaddress, tuple(addresspush))
-                            conn.commit()
-                            print("Updated and committed %s - %s" % (key, addresslist[-1]))
-
-                        progressdf.loc[len(progressdf)] = key
-                        progressdf.to_csv("progressdf.csv")
-    """
+            cur.execute(bagupdatebuurt, (gem_code, wk_code, bu_code, values[0]))
+            conn.commit()
+            print("Updated and committed %s - %s" % (key, valuedata[-1][3]))
+"""        

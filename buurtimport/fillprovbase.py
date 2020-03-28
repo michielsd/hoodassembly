@@ -27,14 +27,14 @@ for code in codes2019:
         pass 
     else:
         codemask = "GM%s" % (code[2:6])
-
+        gemeente = dfprov.loc[dfprov['GemeentecodeGM'] == codemask]['Gemeentenaam'].values[0]
         provincie = dfprov.loc[dfprov['GemeentecodeGM'] == codemask]['Provincienaam'].values[0]
-        print(code, provincie)
-        provbase.append([code, provincie])
+        print(code, gemeente, provincie)
+        provbase.append([code, gemeente, provincie])
 
 provexp = pd.DataFrame(provbase)
 
-columnlist = ['code', 'provincie']
+columnlist = ['code', 'gemeente' ,'provincie']
 
 provexp.columns = columnlist
 

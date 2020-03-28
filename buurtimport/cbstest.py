@@ -17,7 +17,7 @@ datasets
 
 """
 
-info = cbsodata.get_data('84583NED')
+info = cbsodata.get_data('84286NED')
 
 infolist = []
 
@@ -37,7 +37,7 @@ for row in info:
 
 
 #write to file
-filename = 'buurtdata2019.csv'
+filename = 'buurtdata2018.csv'
 with open(filename, 'w', newline='') as newfile:
         writer = csv.writer(newfile)
         writer.writerows(infolist)

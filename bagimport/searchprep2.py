@@ -74,7 +74,7 @@ for wijk in wijkbuurt:
 wijkbuurtpull = """SELECT codering_3, urlbu, urlwk, urlgm, wijkenenbuurten FROM wijkbuurt2019"""
 cur.execute(wijkbuurtpull)
 wijkbuurt = cur.fetchall()
-
+"""
 wijkbuurt2 = []
 for buurt in wijkbuurt:
     altline = []
@@ -86,7 +86,7 @@ for buurt in wijkbuurt:
     wijkbuurt2.append(altline)
 
 print(wijkbuurt2[:5])
-
+"""
 #pull woonplaats en straat data
 woonplaatspull = """SELECT DISTINCT(woonplaats) FROM bagadres"""
 cur.execute(woonplaatspull)
@@ -105,8 +105,7 @@ for wijk in wijkbuurt:
     codering = wijk[0]
     names = wijk[1:]
     urldict[codering] = names
-    if codering.startswith("GM"): #voor fout in dubbelgeboekte
-        extracode = "GMGM"
+
 
 print("Prep complete")
 
@@ -134,8 +133,8 @@ for woonplaats in woonplaatsen:
         selectdf = bagdf.loc[bagdf['openbareruimte'] == straat[0]]
         codes_q = len(set(selectdf.loc[:, 'bu_code'].values))
 
-        if codes_q == 1:
-            print(selectdf.values[0])
+        if codes_q > 5:
+            print(straat, set(selectdf.loc[:, 'bu_code'].values))
             gmcode = selectdf.loc[:, 'gem_code'].values[0]
             wkcode = selectdf.loc[:, 'wk_code'].values[0]
             bucode = selectdf.loc[:, 'bu_code'].values[0]
@@ -163,7 +162,7 @@ for woonplaats in woonplaatsen:
 
             datainsert = (searchindex, gmurl, wkurl, buurl, woonplaats)
             woonplaatslist.append(datainsert)
-            print(datainsert)
+            #print(datainsert)
         else:
             for index, row in selectdf.iterrows():
                 #print(row)
@@ -181,9 +180,9 @@ for woonplaats in woonplaatsen:
                 
                 datainsert = (fulladdress, gemeenteurl, wijkurl, buurturl, woonplaats)
                 woonplaatslist.append(datainsert)
-                print(datainsert)
+                #print(datainsert)
 
-    cur.execute(searchbasepull, (woonplaats,))
+    #cur.execute(searchbasepull, (woonplaats,))
     
     try: 
         woonplaatscheck = cur.fetchall()
@@ -196,8 +195,8 @@ for woonplaats in woonplaatsen:
         pass
 
     print("EXECUTING INTO DBASE FOR %s" % woonplaats)
-    cur.executemany(insertbag, woonplaatslist)
-    conn.commit()
+    #cur.executemany(insertbag, woonplaatslist)
+    #conn.commit()
     print("INSERT SUCCESFUL")
     
     

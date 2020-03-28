@@ -159,14 +159,14 @@ print("")
 mistakecounter = 0
 for index, row in df.iterrows():
     row2017 = df2017.loc[df2017['codering_3'] == row['codering_3']]
+    #print(row2017.values.tolist())
     #voor fout in koppeling!!!
-    try:
-        values2017 = row2017.values.tolist()[0][1:]
+    values2017 = row2017.values.tolist()[0][1:]
+    if isinstance(values2017[0], float):
         income = 100*int(100*float(values2017[0]))
         values2017 = [income] + values2017[1:]
-    except:
-        values2017 = [None, None, None, None, None, None]
-
+        
+        
     wenb = codedict[row['codering_3']]
 
     #combine into new table

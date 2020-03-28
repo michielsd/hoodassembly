@@ -11,7 +11,7 @@ except:
 
 cur = conn.cursor()
 
-pullmatchold = """SELECT current, old FROM match1719"""
+pullmatchold = """SELECT current, old FROM match1819"""
 cur.execute(pullmatchold)
 matchtuple = cur.fetchall()
 matchold = [['NL00', 'NL00']]
@@ -22,7 +22,7 @@ conn.close()
 
 engine = create_engine('postgresql+psycopg2://buurtuser:123456@localhost/dbbuurt')
 
-df = pd.read_csv('buurtdata2017.csv', encoding='Windows-1252', index_col=0)
+df = pd.read_csv('buurtdata2018.csv', encoding='Windows-1252', index_col=0)
 
 bestanden = [
     'buurtdata2013.csv'
@@ -39,11 +39,10 @@ df.columns = df.columns.str.strip()
 df['wijkenenbuurten'] = df['wijkenenbuurten'].str.strip()
 df['gemeentenaam_1'] = df['gemeentenaam_1'].str.strip()
 df['codering_3'] = df['codering_3'].str.strip()
-df['meestvoorkomendepostcode_102'] = df['meestvoorkomendepostcode_102'].str.strip()
-df['pctvrouwen_200'] = round(100*df['vrouwen_7'] / df['aantalinwoners_5'], 1)
-df['pctkinderen_201'] = round(100*df['k_0tot15jaar_8'] / df['aantalinwoners_5'], 1)
-df['pctstudenten_202'] = round(100*df['k_15tot25jaar_9'] / df['aantalinwoners_5'], 1)
-df['pctbijstand_203'] = round(100*df['personenpersoortuitkeringbijstand_74'] / df['aantalinwoners_5'], 1)  
+#df['meestvoorkomendepostcode_102'] = df['meestvoorkomendepostcode_102'].str.strip()
+#df['pctvrouwen_200'] = round(100*df['vrouwen_7'] / df['aantalinwoners_5'], 1)
+#df['pctkinderen_201'] = round(100*df['k_0tot15jaar_8'] / df['aantalinwoners_5'], 1)
+#df['pctstudenten_202'] = round(100*df['k_15tot25jaar_9'] / df['aantalinwoners_5'], 1)
 
 emptyref = []
 for code in matchold:
@@ -54,7 +53,9 @@ for code in matchold:
         income = None
         hhhigh = None
         hhlow = None
-        welfare = None
+        diefstal = None
+        vernieling = None
+        geweld = None
 
         rightrow = df.loc[df['codering_3'] == oldcode]
 
@@ -67,10 +68,16 @@ for code in matchold:
         if not rightrow['huishoudensmeteenlaaginkomen_72'].empty:
             hhlow = rightrow['huishoudensmeteenlaaginkomen_72'].values[0]
 
-        if not rightrow['pctbijstand_203'].empty:
-            welfare = rightrow['pctbijstand_203'].values[0]
+        if not rightrow['totaaldiefstaluitwoningschuured_78'].empty:
+            diefstal = rightrow['totaaldiefstaluitwoningschuured_78'].values[0]
 
-        newline = [newcode, income, hhhigh, hhlow, welfare]
+        if not rightrow['vernielingmisdrijftegenopenbareorde_79'].empty:
+            vernieling = rightrow['vernielingmisdrijftegenopenbareorde_79'].values[0]
+
+        if not rightrow['geweldsenseksuelemisdrijven_80'].empty:
+            geweld = rightrow['geweldsenseksuelemisdrijven_80'].values[0]
+
+        newline = [newcode, income, hhhigh, hhlow, diefstal, vernieling, geweld]
         print(newline)
         emptyref.append(newline)
 
@@ -87,8 +94,14 @@ for code in matchold:
         hhlow = 0
         lno = 0
         
-        welfare = 0
-        wno = 0
+        diefstal = 0
+        dno = 0
+
+        vernieling = 0
+        vno = 0
+
+        geweld = 0
+        gno = 0
 
         for c in oldcodes:
             rightrow = df.loc[df['codering_3'] == c]
@@ -102,15 +115,22 @@ for code in matchold:
             if not rightrow['huishoudensmeteenlaaginkomen_72'].empty:
                 hhlow += rightrow['huishoudensmeteenlaaginkomen_72'].values[0]
                 lno += 1
-            if not rightrow['pctbijstand_203'].empty:
-                welfare += rightrow['pctbijstand_203'].values[0]
-                wno += 1
-
+            if not rightrow['totaaldiefstaluitwoningschuured_78'].empty:
+                diefstal += rightrow['totaaldiefstaluitwoningschuured_78'].values[0]
+                dno += 1
+            if not rightrow['vernielingmisdrijftegenopenbareorde_79'].empty:
+                vernieling += rightrow['vernielingmisdrijftegenopenbareorde_79'].values[0]
+                vno += 1
+            if not rightrow['geweldsenseksuelemisdrijven_80'].empty:
+                geweld += rightrow['geweldsenseksuelemisdrijven_80'].values[0]
+                gno += 1
 
         avincome = None
         avhigh = None
         avlow = None
-        avfare = None
+        avdief = None
+        avvern = None
+        avgew = None
 
         if ino > 0:
             avincome = str(round(income / ino, 1))
@@ -118,24 +138,28 @@ for code in matchold:
             avhigh = str(round(hhhigh / hno, 1))
         if lno > 0: 
             avlow = str(round(hhlow / lno, 1))
-        if wno > 0:
-            avfare = str(round(welfare / wno, 1))
+        if dno > 0:
+            avdief = str(round(diefstal / dno, 1))
+        if vno > 0:
+            avvern = str(round(vernieling / vno, 1))
+        if gno > 0:
+            avgew = str(round(geweld / gno, 1))
 
 
-        newline = [newcode, avincome, avhigh, avlow, avfare]
+        newline = [newcode, avincome, avhigh, avlow, avdief, avvern, avgew]
         print(newline)
         emptyref.append(newline)
 
 
 dfexp = pd.DataFrame(emptyref)
 
-columnlist = ['codering_3', 'gemiddeldinkomenperinkomensontvanger_65', 'k_20huishoudensmethoogsteinkomen_71', 'huishoudensmeteenlaaginkomen_72', 'pctbijstand_203']
+columnlist = ['codering_3', 'gemiddeldinkomenperinkomensontvanger_65', 'k_20huishoudensmethoogsteinkomen_71', 'huishoudensmeteenlaaginkomen_72', 'totaaldiefstaluitwoningschuured_78', 'vernielingmisdrijftegenopenbareorde_79', 'geweldsenseksuelemisdrijven_80']
 
 dfexp.columns = columnlist
 
 print(dfexp)
 
-dfexp.to_sql('wijkbuurt201719', engine)
+dfexp.to_sql('wijkbuurt201819', engine)
 print("Wijken, buurten toegevoegd")
 print('Succes!')
 

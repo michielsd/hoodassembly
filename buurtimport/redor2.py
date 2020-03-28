@@ -10,7 +10,7 @@ engine = create_engine('postgresql+psycopg2://buurtuser:123456@localhost/dbbuurt
 
 # pull data sql
 # SYNC STEMMEN EN NEIGHBOURS MET HOOFD TABLE
-selectwb = """SELECT * FROM wijkbuurt2018"""
+selectwb = """SELECT * FROM wijkbuurt2019"""
 selectstemmen = """SELECT code, part1naam, part1pct, part2naam, part2pct, part3naam, part3pct, popupct FROM stemmen""" 
 selectnav = """SELECT * FROM navbase"""
 

@@ -1,5 +1,6 @@
 import psycopg2
 import pandas as pd
+from sqlalchemy import create_engine
 
 try:
     conn = psycopg2.connect("dbname='dbbuurt' user='buurtuser' host='localhost' password='123456'")
@@ -8,6 +9,8 @@ except:
     print("Database connection failed")
 
 cur = conn.cursor()
+
+engine = create_engine('postgresql+psycopg2://buurtuser:123456@localhost/dbbuurt')
 
 #helper#
 def TurnFloat(coordinate):
@@ -140,50 +143,78 @@ def OnlyPostExtract(postcode):
 
     return datalist
 
-def Starterclue(clue, woonplaats):
-
-
-    sqlphrase = """SELECT openbareruimte, huisnummer, lon, lat, gem_code, wk_code, bu_code FROM bagadres WHERE openbareruimte = %s AND woonplaats = %s"""
-    clue = "%s%%" % clue
-    cur.execute(
-        sqlphrase
-        , (clue, woonplaats)
-    )
-    addresslist = cur.fetchall()
-
-    addresses = []
-    for address in addresslist:
-        addresses.append(list(address))
-
-    for address in addresses:
-        address[2] = TurnFloat(address[2])
-        address[3] = TurnFloat(address[3])
-
-    df = pd.DataFrame(addresses)
-
-    if len(addresslist) >= 1:
-        
-        lon = addresslist[0][2]
-        lat = addresslist[0][3]
-        gem_code = addresslist[0][4]
-        wk_code = addresslist[0][5]
-        bu_code = addresslist[0][6]
-        datalist = [lon, lat, gem_code, wk_code, bu_code]
-    
-    else:
-        
-        datalist = False
-
-    return datalist
-
-
 # sql phrases
 importschool = """SELECT id, keten, adres, postcode, plaats FROM supermarkt WHERE bu_code is null"""
 exportcode = """UPDATE supermarkt SET lon = %s, lat = %s, gem_code = %s, wk_code = %s, bu_code = %s WHERE id = %s"""
 
+superbag = """SELECT id, keten, adres, postcode, plaats FROM supermarkt WHERE bu_code is null"""
+
 cur.execute(importschool)
 schoollist = cur.fetchall()
 
+straten = []
+for school in schoollist:
+    try:
+        schoolstraat = school[2].rsplit(' ', 1)[0]
+        schoolnummer = ''.join(c for c in school[2].rsplit(' ', 1)[1] if c.isdigit())
+    except:
+        schoolstraat = school[2]
+
+    straten.append(schoolstraat)
+
+straten = list(set(straten))
+straten.sort()
+
+print(straten)
+for limit in range(0,150):
+    basisbag = """SELECT openbareruimte, huisnummer, postcode, gem_code, wk_code, bu_code, lon, lat FROM bagadres WHERE openbareruimte = %s"""
+    lowerlimit = 50* limit
+    counterlowerlimit = lowerlimit + 1
+    higherlimit = lowerlimit + 50
+    for straat in straten[counterlowerlimit:higherlimit]:
+        basisbag += """ OR openbareruimte = %s"""
+
+    straatselectie = straten[lowerlimit:higherlimit]
+    bagdf = pd.read_sql_query(basisbag, engine, params=straatselectie)
+
+    for school in schoollist:
+        print(school)
+        try:
+            schoolstraat = school[2].rsplit(' ', 1)[0]
+            schoolnummer = ''.join(c for c in school[2].rsplit(' ', 1)[1] if c.isdigit())
+        except:
+            schoolstraat = school[2]
+
+        if schoolstraat in straten[lowerlimit:higherlimit]:
+            vestigingsnummer = school[0]
+            postcode = school[3].replace(" ","")
+            schoolplaats = school[4]
+
+            bagresult = bagdf.loc[
+                (bagdf['openbareruimte'] == schoolstraat)
+                & (bagdf['huisnummer'] == schoolnummer)
+                & (bagdf['postcode'] == postcode)
+            ]
+
+            if not bagresult.empty:
+                resultrow = bagresult.values.tolist()[0]
+                print(resultrow)
+                gem_code = resultrow[3]
+                wk_code = resultrow[4]
+                bu_code = resultrow[5]
+                lon = resultrow[6]
+                lat = resultrow[7]
+
+                #print(gem_code, wk_code, bu_code, vestigingsnummer)
+                cur.execute(exportcode, (lon, lat, gem_code, wk_code, bu_code, vestigingsnummer))
+                conn.commit()
+                print("Committed %s to %s" % (school[1], bu_code))
+
+
+
+
+
+"""
 for school in schoollist:
 
     vestigingsnummer = school[0]
@@ -191,10 +222,10 @@ for school in schoollist:
     try:
         schoolstraat = school[2].rsplit(' ', 1)[0]
         schoolnummer = ''.join(c for c in school[2].rsplit(' ', 1)[1] if c.isdigit())
-        firstbit = school[2].split(' ', 1)[0]
     except:
         schoolstraat = school[2]
-        firstbit = school[2].split(' ', 1)[0]
+
+
 
     postcode = school[3].replace(" ","")
     schoolplaats = school[4]
@@ -218,12 +249,6 @@ for school in schoollist:
             postcode
         )
 
-    if not address:
-        print(firstbit, schoolplaats)
-        address = Starterclue(
-            firstbit, schoolplaats
-        )
-
     if address:
         insertdata = address + [vestigingsnummer]
 
@@ -237,3 +262,4 @@ for school in schoollist:
 
 conn.close()
 print("Finished and connection closed")
+"""

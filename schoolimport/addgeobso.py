@@ -26,7 +26,7 @@ def TurnFloat(coordinate):
 engine = create_engine('postgresql+psycopg2://buurtuser:123456@localhost/dbbuurt')
 
 
-importschool = """SELECT lrk_id, bag_id, bu_code FROM kinderopvang"""
+importschool = """SELECT lrk_id, bag_id, bu_code FROM kinderopvang WHERE bu_code IS NULL"""
 exportschool = """UPDATE kinderopvang SET lon = %s, lat = %s, gem_code = %s, wk_code = %s, bu_code = %s WHERE lrk_id = %s"""
 cur.execute(importschool)
 schoollist = cur.fetchall()
@@ -56,7 +56,8 @@ while counter < 10000000:
                 bu_code = schooldf.bu_code.values[0]
 
                 cur.execute(exportschool, (lon, lat, gem_code, wk_code, bu_code, idcode))
-                print("Executed %s into DB, Counter: %s / 100" % (idcode, counter))
+                conn.commit()
+                print("Executed %s into DB, Counter: %s / 100" % (idcode, int(counter / 100000)))
 
     #cur.executemany(exportschool, hitlist)
     print("Executed into database")
